@@ -175,3 +175,119 @@ plt.scatter(centroids_x,centroids_y,marker='D',s=50)
 plt.show()
 
 ###################################################
+#k-means inertia graph
+###################################################
+
+ks = range(1, 6)
+inertias = []
+
+for k in ks:
+    # Create a KMeans instance with k clusters: model
+    model = KMeans(n_clusters=k)
+    
+    # Fit model to samples
+    model.fit(samples)
+    
+    # Append the inertia to the list of inertias
+    inertias.append(model.inertia_)
+    
+# Plot ks vs inertias
+plt.plot(ks, inertias, '-o')
+plt.xlabel('number of clusters, k')
+plt.ylabel('inertia')
+plt.xticks(ks)
+plt.show()
+###################################################
+#cross_tab
+###################################################
+# Create a KMeans model with 3 clusters: model
+model = KMeans(n_clusters=3)
+
+# Use fit_predict to fit model and obtain cluster labels: labels
+labels = model.fit_predict(samples)
+
+# Create a DataFrame with labels and varieties as columns: df
+df = pd.DataFrame({'labels': labels, 'varieties': varieties})
+
+# Create crosstab: ct
+ct = pd.crosstab(df['labels'], df['varieties'])
+
+# Display ct
+print(ct)
+###################################################
+#piedmont wines dataset
+#data preprocessing types
+    #standardized = mean 0, var 1
+    #MaxAbsScaler
+    #Normalizer
+###################################################
+# Perform the necessary imports
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+
+# Create scaler: scaler
+scaler = StandardScaler()
+
+# Create KMeans instance: kmeans
+kmeans = KMeans(n_clusters=4)
+
+# Create pipeline: pipeline
+pipeline = make_pipeline(scaler,kmeans)
+
+#StandardScaler VS KMeans
+ #fit()/transform()
+ #fit()/predict()
+###################################################
+#standardization and clustering pipeline 
+#cross-tabulation
+###################################################
+# Import pandas
+import pandas as pd
+
+# Fit the pipeline to samples
+pipeline.fit(samples)
+
+# Calculate the cluster labels: labels
+labels = pipeline.predict(samples)
+
+# Create a DataFrame with labels and species as columns: df
+df = pd.DataFrame({'labels': labels, 'species': species})
+
+# Create crosstab: ct
+ct = pd.crosstab(df['labels'], df['species'])
+
+# Display ct
+print(ct)
+##############################################
+#Yahoo stock data- normalizer
+    #StandardScaler() standardizes features (such as the features of the fish data from the previous exercise) by removing the mean and scaling to unit variance, 
+    #Normalizer() rescales each sample - here, each company's stock price - independently of the other.
+#################
+# Import Normalizer
+from sklearn.preprocessing import Normalizer
+
+# Create a normalizer: normalizer
+normalizer = Normalizer()
+
+# Create a KMeans model with 10 clusters: kmeans
+kmeans = KMeans(n_clusters=10)
+
+# Make a pipeline chaining normalizer and kmeans: pipeline
+pipeline = make_pipeline(normalizer,kmeans)
+
+# Fit pipeline to the daily price movements
+pipeline.fit(movements)
+#####################################################
+# Import pandas
+import pandas as pd
+
+# Predict the cluster labels: labels
+labels = pipeline.predict(movements)
+
+# Create a DataFrame aligning labels and companies: df
+df = pd.DataFrame({'labels': labels, 'companies': companies})
+
+# Display df sorted by cluster label
+print(df.sort_values('labels'))
+#############################################
