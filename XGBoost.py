@@ -12,9 +12,10 @@
 #################################################
 #################################################
 #XGBoost
-    '''speed and performance
-        core algorithm is parallelizable
-        consistently outperforms single-algorithm methods'''
+'''speed and performance
+core algorithm is parallelizable
+
+consistently outperforms single-algorithm methods'''
 #################################################
 import xgboost as xgb
 X, y = churn_data.iloc[:,:-1], churn_data.iloc[:,-1]
@@ -193,3 +194,146 @@ housing_dmatrix = xgb.DMatrix(data=X, label=y)# Create your housing DMatrix
 params = {"objective":"reg:linear", "max_depth":4}# Create the parameter dictionary
 cv_results = xgb.cv(dtrain=housing_dmatrix, params=params, nfold=3, num_boost_round=50, metrics="rmse", as_pandas=True, seed=123)
 print(cv_results)
+#################################################
+#Tuning eta
+#################################################
+housing_dmatrix = xgb.DMatrix(data=X, label=y)
+params = {"objective":"reg:linear", "max_depth":3}# Create the parameter dictionary for each tree (boosting round)
+
+# Create list of eta values and empty list to store final round rmse per xgboost model
+eta_vals = [0.001, 0.01, 0.1]
+best_rmse = []
+
+for curr_val in eta_vals:
+    params["eta"] = curr_val
+    cv_results = xgb.cv(dtrain=housing_dmatrix, params=params, nfold=3, num_boost_round=10, metrics="rmse", as_pandas=True, seed=123)
+    best_rmse.append(cv_results["test-rmse-mean"].tail().values[-1]) # Append the final round rmse to best_rmse
+print(pd.DataFrame(list(zip(eta_vals, best_rmse)), columns=["eta","best_rmse"]))
+#################################################
+#Tuning max_depth
+#################################################
+housing_dmatrix = xgb.DMatrix(data=X,label=y)
+params = {"objective":"reg:linear"}# Create the parameter dictionary
+max_depths = [2, 5, 10,  20]# Create list of max_depth values
+best_rmse = []
+
+for curr_val in max_depths:
+    params["max_depth"] = curr_val
+    cv_results = xgb.cv(dtrain=housing_dmatrix, params=params, nfold=2, num_boost_round=10, metrics="rmse", as_pandas=True, seed=123)
+#################################################
+#Tuning colsample_bytree
+#################################################
+housing_dmatrix = xgb.DMatrix(data=X,label=y)
+params={"objective":"reg:linear","max_depth":3}# Create the parameter dictionary
+
+colsample_bytree_vals = [0.1, 0.5, 0.8,  1]# Create list of hyperparameter values: colsample_bytree_vals
+best_rmse = []
+
+for curr_val in colsample_bytree_vals:
+    params["colsample_bytree_vals"] = curr_val
+    cv_results = xgb.cv(dtrain=housing_dmatrix, params=params, nfold=2,
+                 num_boost_round=10, early_stopping_rounds=5,
+                 metrics="rmse", as_pandas=True, seed=123)
+    best_rmse.append(cv_results["test-rmse-mean"].tail().values[-1])
+print(pd.DataFrame(list(zip(colsample_bytree_vals, best_rmse)), columns=["colsample_bytree","best_rmse"]))
+#################################################
+#find the optimal value(choose hyperparameter), lowest loss possible.
+#Grid Search
+    '''1) search over given set of hyperparameters
+        2) number of models= number of distinct values per huperparameter * each hyperparameter
+        3) Pick fianl model hyperparameter values that gives best corss-valudation metrics'''
+#Random search
+    '''1) create range of hyperparameter values per hyperparameter
+        2) set the number of iteration you would like
+        3) During the iteration, ramdomly draw a value in the range for each huperparameter searched
+        4) After reached maximum number of iteration, select the hyperparameter configuration with the best evaluated score''' 
+    #scoring method: 'neg_mean_squared_error'
+#################################################
+#Grid Search
+#################################################
+housing_dmatrix = xgb.DMatrix(data=X, label=y)
+
+# Create the parameter grid
+gbm_param_grid = {
+    'colsample_bytree': [0.3, 0.7],
+    'n_estimators': [50],
+    'max_depth': [2, 5]
+}
+gbm = xgb.XGBRegressor()# Instantiate the regressor: gbm
+# grid search
+grid_mse = GridSearchCV(param_grid=gbm_param_grid,
+                        estimator=gbm,
+                        scoring="neg_mean_squared_error",cv=4)
+grid_mse.fit(X,y)# Fit 
+print("Best parameters found: ", grid_mse.best_params_)#best parameters and lowest RMSE
+print("Lowest RMSE found: ", np.sqrt(np.abs(grid_mse.best_score_)))
+#################################################
+#Random search
+#################################################
+gbm_param_grid = {
+    'n_estimators': [25],
+    'max_depth': range(2, 12)
+}
+gbm = xgb.XGBRegressor(n_estimators=10)#regressor
+
+# Perform random search: grid_mse
+randomized_mse = RandomizedSearchCV(param_distributions=gbm_param_grid,
+                        estimator=gbm,
+                        scoring="neg_mean_squared_error",cv=4)
+randomized_mse.fit(X,y)# Fit
+print("Best parameters found: ", randomized_mse.best_params_)
+print("Lowest RMSE found: ", np.sqrt(np.abs(randomized_mse.best_score_)))
+#################################################
+#Preprocessing 1: Label Encoder(convert categorical to integer) and 
+                #OneHotEncoder (integers into dummy variables)
+#Preprocessing 2: DictVectorizer
+#################################################
+#Label Encoder
+from sklearn.preprocessing import LabelEncoder
+df.LotFrontage = df.LotFrontage.fillna(0)# Fill missing values with 0
+categorical_mask = (df.dtypes == object)# Create a boolean mask for categorical columns
+categorical_columns = df.columns[categorical_mask].tolist()# Get list of categorical column names
+print(df[categorical_columns].head())# Print the head of the categorical columns
+le = LabelEncoder()# Create LabelEncoder object: le
+df[categorical_columns] = df[categorical_columns].apply(lambda x: le.fit_transform(x))# Apply LabelEncoder to categorical columns
+print(df[categorical_columns].head())
+#OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder
+ohe = OneHotEncoder(categorical_features=categorical_mask, sparse=False)# Create OneHotEncoder: ohe
+df_encoded = ohe.fit_transform(df)# Apply OneHotEncoder to categorical columns 
+print(df_encoded[:5, :])# Print first 5 rows of the resulting dataset
+print(df.shape)# Print the shape of the original DataFrame
+print(df_encoded.shape)# Print the shape of the transformed array
+#DictVectorizer
+from sklearn.feature_extraction import DictVectorizer
+df_dict = df.to_dict("records")# Convert df into a dictionary: df_dict
+dv = DictVectorizer(sparse=False)# Create the DictVectorizer object: dv
+df_encoded = dv.fit_transform(df_dict)# Apply 
+print(df_encoded[:5,:])# Print the resulting first five rows
+print(dv.vocabulary_)# Print the vocabulary
+#################################################
+#Preprocessing within a pipeline
+#################################################
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.pipeline import Pipeline  
+X.LotFrontage = X.LotFrontage.fillna(0)# Fill LotFrontage missing values with 0
+
+# Setup the pipeline steps: steps
+steps = [("ohe_onestep", DictVectorizer(sparse=False)),
+         ("xgb_model", xgb.XGBRegressor())]
+
+xgb_pipeline = Pipeline(steps)# Create the pipeline: xgb_pipeline
+xgb_pipeline.fit(X.to_dict("records"), y)# Fit the pipeline
+#################################################
+#Cross-validating your XGBoost model
+#################################################
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import cross_val_score
+X.LotFrontage = X.LotFrontage.fillna(0)# Fill LotFrontage missing values with 0
+# Setup the pipeline steps: steps
+steps = [("ohe_onestep", DictVectorizer(sparse=False)),
+         ("xgb_model", xgb.XGBRegressor(max_depth=2, objective="reg:linear"))]
+xgb_pipeline = Pipeline(steps)# Create the pipeline: xgb_pipeline
+cross_val_scores = cross_val_score(xgb_pipeline, X.to_dict("records"), y, cv=10, scoring="neg_mean_squared_error")# Cross-validate the model
+print("10-fold RMSE: ", np.mean(np.sqrt(np.abs(cross_val_scores))))# Print the 10-fold RMSE
