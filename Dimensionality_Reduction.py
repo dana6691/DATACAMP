@@ -263,6 +263,17 @@ print(reduced_df.head())
 #Feature Extraction
 #Principal Component Analysis
 ################################################
+#Manual feature extraction I
+sales_df['price'] = sales_df['revenue'] / sales_df['quantity']# Calculate the price from the quantity sold and revenue
+reduced_df = sales_df.drop(['revenue','quantity'], axis=1)# Drop the quantity and revenue features
+print(reduced_df.head())
+
+#Manual feature extraction II
+height_df['height'] = height_df[['height_1','height_2','height_3']].mean(axis=1)# Calculate the mean height
+reduced_df = height_df.drop(['height_1','height_2','height_3'], axis=1)# Drop the 3 original height features
+print(reduced_df.head())
+
+#Calculating Principal Components
 sns.pairplot(ansur_df) #pairplot of regular generalized data
 plt.show()
 
@@ -276,7 +287,6 @@ pc_df = pd.DataFrame(pc, columns=['PC 1', 'PC 2', 'PC 3', 'PC 4'])
 sns.pairplot(pc_df)# Create a pairplot of the principal component dataframe
 plt.show()
 
-
 #PCA on larger datset
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -285,14 +295,102 @@ ansur_std = scaler.fit_transform(ansur_df)
 pca = PCA()# Apply PCA
 pca.fit(ansur_std)
 
-
-
+#PCA explained variance
 print(pca.explained_variance_ratio_) #variance ratio per component
     '''variance is explained by the 4th principal component? 3.77%'''
 print(pca.explained_variance_ratio_.cumsum()) #cumulative sum of the explained variance ratio
     '''no more than 4 principal components we can explain more than 90% of the variance in the 13 feature dataset.'''
-
+################################################
 #PCA Application
     #PCA needs to decide how much of explained variance are willing to sacrifice. 
     #Downside: remaining components are hard to interpret
-    
+################################################
+pipe = Pipeline([('scaler', StandardScaler()),
+        		 ('reducer', PCA(n_components=2))])
+pipe.fit(poke_df)# Fit it to the dataset and extract the component vectors
+vectors = pipe.steps[1][1].components_.round(2)
+print('PC 1 effects = ' + str(dict(zip(poke_df.columns, vectors[0]))))# Print feature effects
+print('PC 2 effects = ' + str(dict(zip(poke_df.columns, vectors[1]))))
+'''
+    All features have a similar positive effect. PC 1 can be interpreted as a measure of overall quality (high stats).
+    Defense has a strong positive effect on the second component and speed a strong negative one. This component quantifies an agility vs. armor & protection trade-off.
+'''
+
+#PCA for feature exploration
+pipe = Pipeline([('scaler', StandardScaler()),
+                 ('reducer', PCA(n_components=2))])
+pc = pipe.fit_transform(poke_df)# Fit the pipeline to poke_df and transform the data
+print(pc)
+
+poke_cat_df['PC 1'] = pc[:, 0]# Add the 2 components to poke_cat_df
+poke_cat_df['PC 2'] = pc[:, 1]
+
+sns.scatterplot(data=poke_cat_df, 
+                x='PC 1', y='PC 2', hue='Type')# Use the Type feature to color the PC 1 vs PC 2 scatterplot
+plt.show()
+sns.scatterplot(data=poke_cat_df, 
+                x='PC 1', y='PC 2', hue='Legendary')# Use the Legendary feature to color the PC 1 vs PC 2 scatterplot
+plt.show()
+
+#PCA in a model pipeline
+pipe = Pipeline([
+        ('scaler', StandardScaler()),
+        ('reducer', PCA(n_components=2)),
+        ('classifier', RandomForestClassifier(random_state=0))]) #2 componentas extracted
+
+pipe.fit(X_train,y_train)# Fit the pipeline to the training data
+print(pipe.steps[1][1].explained_variance_ratio_)# Prints the explained variance ratio
+
+accuracy = pipe.score(X_test,y_test)# Score the accuracy on the test set
+print('{0:.1%} test set accuracy'.format(accuracy))
+'''
+    repeated the process with n_components =3, doesn't change accuracy
+'''
+################################################
+#Principal Component Selection
+    '''1)setting an explained variance threshold
+        2)plot(principal component index vs Explained variance ratio)
+        3)From above, use elblow method'''
+    #1. pca.fit(X) --> pca.transform(X)
+    #2. pca.fit_transform(X)  
+    #3. pca.inverse_transform(pc) : imaging compression
+################################################
+#Selecting the proportion of variance to keep
+################################################ 
+# Pipe a scaler to PCA selecting 80% of the variance
+pipe = Pipeline([('scaler', StandardScaler()),
+        		 ('reducer', PCA(n_components=0.8))])
+ipe.fit(ansur_df)# Fit the pipe to the data
+print('{} components selected'.format(len(pipe.steps[1][1].components_)))
+
+# Pipe a scaler to PCA selecting 90% of the variance
+pipe = Pipeline([('scaler', StandardScaler()),
+        		 ('reducer', PCA(n_components=0.9))])
+pipe.fit(ansur_df)# Fit the pipe to the data
+print('{} components selected'.format(len(pipe.steps[1][1].components_)))
+################################################
+#Choosing the number of components
+################################################ 
+pipe = Pipeline([('scaler', StandardScaler()),
+        		 ('reducer', PCA(n_components=10))])#pca selecting 10 components
+pipe.fit(ansur_df)# Fit
+plt.plot(pipe.steps[1][1].explained_variance_ratio_)# Plot the explained variance ratio
+plt.xlabel('Principal component index')
+plt.ylabel('Explained variance ratio')
+plt.show()
+''' 'elbow' in the plot is at 3 components (the 3rd component has index 2).'''
+################################################
+#PCA for image compression
+################################################
+plot_digits(X_test)# Plot the MNIST sample data
+pc = pipe.transform(X_test)# Transform the input data to principal components
+print("X_test has {} features".format(X_test.shape[1]))# Prints the number of features per dataset
+print("pc has {} features".format(pc.shape[1]))
+
+X_rebuilt = pipe.inverse_transform(pc)# Inverse transform the components to original feature space
+print("X_rebuilt has {} features".format(X_rebuilt.shape[1]))# Prints the number of features
+
+plot_digits(X_rebuilt)# Plot the reconstructed data
+    '''
+    You've reduced the size of the data 10 fold but were able to reconstruct images with reasonable quality.
+    '''
