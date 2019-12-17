@@ -1,5 +1,5 @@
 ################################################
-#
+#list of columns
 ################################################
 #read test data
 import pandas as pd
@@ -31,7 +31,7 @@ test['sales'] = rf.predict(test[['store', 'item']])# Get predictions for the tes
 test[['id', 'sales']].to_csv('kaggle_submission.csv', index=False)# Write test predictions using the sample_submission format
 ################################################
 #Competition metric
-    '''1)AUC(area under the ROC): classification
+    ''' 1)AUC(area under the ROC): classification
         2)F1 Score(F1) : classification
         3)Mean Log Loss(LogLoss) : classification
         4)Mean Absolute Error(MAE): Regression
@@ -176,11 +176,11 @@ train = train.sort_values('date')# Sort train data by date
 fold = 0
 for train_index, test_index in time_kfold.split(train):
     cv_train, cv_test = train.iloc[train_index], train.iloc[test_index]
-    
     print('Fold :', fold)
     print('Train date range: from {} to {}'.format(cv_train.date.min(), cv_train.date.max()))
     print('Test date range: from {} to {}\n'.format(cv_test.date.min(), cv_test.date.max()))
     fold += 1
+
 #Overall validation score
 from sklearn.model_selection import TimeSeriesSplit
 import numpy as np
@@ -243,7 +243,7 @@ houses = pd.concat([houses, ohe], axis=1)# Concatenate OHE features to houses
 print(houses[[col for col in houses.columns if 'RoofStyle' in col]].head(3))# Look at OHE features
 ################################################
 #Target encoding
-    #high cardinality categorical features
+    #high cardinality categorical features: unique values, such as, ID number, E-mail 
         #label encoder provides distinct number for each category
         #one-hot encoder creates new features for each category value
         #Mean target encoding
@@ -377,5 +377,53 @@ test[['id','fare_amount']].to_csv('rf_sub.csv', index=False)# Write predictions
 '''
 ################################################
 #Hyperparameter tuning
+#goal: find the best max_depth hyperparameter value for this Gradient Boosting model
+#Using K-fold cross-validation to measure the local performance of the model for each hyperparameter value
+#overall validation RMSE score over 3-fold cross-validation
+################################################
+#Grid search
+max_depth_grid = [3, 6, 9, 12 , 15]
+results = {}
+for max_depth_candidate in max_depth_grid:
+    params = {'max_depth': max_depth_candidate}
+    validation_score = get_cv_score(train, params)# Calculate validation score for a particular hyperparameter
+    results[max_depth_candidate] = validation_score   
+print(results)
+'''
+    best RMSE of $6.50
+    It's clear that the optimal max depth value is located somewhere between 3 and 6
+    Pick the lowest RMSE
+'''
+#2D grid search
+max_depth_grid = [3,5,7]
+subsample_grid = [0.8,0.9,1]
+results = {}
+
+for max_depth_candidate, subsample_candidate in itertools.product(max_depth_grid, subsample_grid):
+    params = {'max_depth': max_depth_candidate,
+              'subsample': subsample_candidate}
+    validation_score = get_cv_score(train, params)
+    results[(max_depth_candidate, subsample_candidate)] = validation_score   
+print(results)
+'''
+max_depth equal to 7 and subsample equal to 0.8, the best RMSE is now $6.16
+Better than one-D grid search
+'''
+################################################
+#Model ensembling
+    #another way of improving model
+    #using multiple models, not one
+    #To predict the model based on the multiple models
+        #1)model blending: averaging of model A and B prediction
+            #Regresison: arithmetic mean
+            #classification: geometric mean
+        #2)model stacking
+            '''1. split train into two parts
+                2. train multiple models on Part 1
+                3. make prediction on part 2
+                4. make prediction on the test data
+                5. train a new model on Part 2 using predictions as features (2nd level model or meta-model)
+                6. make predictions on the test data using the 2nd level model '''
+            #ex) train data: target is known
 ################################################
 
