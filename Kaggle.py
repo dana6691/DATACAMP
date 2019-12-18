@@ -13,7 +13,7 @@ print(test.columns.tolist())
 train.hist(bins=30,alpha=0.5)
 plt.show()
 ################################################
-#Submission
+#Submission(save file in csv)
 ################################################
 #train simple model
 import pandas as pd
@@ -38,42 +38,35 @@ test[['id', 'sales']].to_csv('kaggle_submission.csv', index=False)# Write test p
         5)Mean Squared Error(MSE): Regression
         6)Mean Average Precision at K(MAPK,MAP@K): Ranking'''
     #Submission = private + public data
+        #when you submit the file, it shows public MSE only, until the competition deadline.
     #Whem training MSE is way lower than testing MSE == overfitting
 ################################################
-#Store Item Demand Forecasting Challenge. 
+#Train XGBoost models(Store Item Demand Forecasting Challenge. )
+#change the maximum depth (2,8,15) and check 
 import xgboost as xgb
-
-# Create DMatrix on train data
 dtrain = xgb.DMatrix(data=train[['store', 'item']],
-                     label=train['sales'])
-
-# Define xgboost parameters
+                     label=train['sales'])# Create DMatrix on train data
 params = {'objective': 'reg:linear',
           'max_depth': 15,
-          'silent': 1}
+          'silent': 1}# Define xgboost parameters
+xg_depth_15 = xgb.train(params=params, dtrain=dtrain)# Train xgboost model
 
-# Train xgboost model
-xg_depth_15 = xgb.train(params=params, dtrain=dtrain)
-
-
-
-
-
+#Explore overfitting XGBoost
 from sklearn.metrics import mean_squared_error
-
 dtrain = xgb.DMatrix(data=train[['store', 'item']])
 dtest = xgb.DMatrix(data=test[['store', 'item']])
-
-# For each of 3 trained models
+    # For each of 3 trained models
 for model in [xg_depth_2, xg_depth_8, xg_depth_15]:
     # Make predictions
     train_pred = model.predict(dtrain)     
     test_pred = model.predict(dtest)          
-    
     # Calculate metrics
     mse_train = mean_squared_error(train['sales'], train_pred)                  
     mse_test = mean_squared_error(test['sales'], test_pred)
     print('MSE Train: {:.3f}. MSE Test: {:.3f}'.format(mse_train, mse_test))
+'''
+    third MSE train:134, MSE test:355, ovbiously overfitting
+'''
 ################################################
 #Workflow
     #Understand the problem -> EDA -> Local Validation -> Modeling
@@ -137,9 +130,9 @@ plt.show()
 ################################################
 #Local Validation
     #solution of overfitting:
-        #Holdout split: split training data(30,70%), use one for training and predicting, and another for model quality check
-        #K-fold cross validation: train model k-times, train data except for single fold  
-        #Strafied K-fold: 
+        #Holdout split: split training data(30,70%), use one for training and the other for predicting, but overfitting problem
+        #K-fold cross validation: better than Holdout, split train data into k times(non-overlapping parts) train model k-times, train data except for single fold  
+        #Strafied K-fold: has defined percentage of each fold(60/40)
 ################################################
 #K-fold cross-validation
 from sklearn.model_selection import KFold
@@ -152,7 +145,6 @@ for train_index, test_index in kf.split(train):
     print('CV train shape: {}'.format(cv_train.shape))
     print('Medium interest listings in CV train: {}\n'.format(sum(cv_train.interest_level == 'medium')))
     fold += 1
-
 
 #Stratified K-Fold
 from sklearn.model_selection import StratifiedKFold
@@ -329,40 +321,30 @@ constant_imputer = SimpleImputer(strategy="constant", fill_value="MISSING")
 rental_listings[['building_id']] = constant_imputer.fit_transform(rental_listings[['building_id']])# building_id imputation
 ################################################################################################
 #Baseline Model
-    #Local/public validation: If local RSME decreases, public should decreases, then it is reliale. 
-
+    #for comparison purpose, make simple model and check RMSE metric result
+    #Local/public validation: If local RSME decreases, public should decreases, then it is reliable. 
 ################################################
-#Replicate validation score
+#Replicate validation score to avoid overfitting(New York City Taxi)
 import numpy as np
 from sklearn.metrics import mean_squared_error
 from math import sqrt
-
-# Calculate the mean fare_amount on the validation_train data
-naive_prediction = np.mean(validation_train['fare_amount'])
-
-# Assign naive prediction to all the holdout observations
-validation_test['pred'] = naive_prediction
-
+naive_prediction = np.mean(validation_train['fare_amount'])# Calculate the mean fare_amount on the validation_train data
+validation_test['pred'] = naive_prediction# Assign naive prediction to all the holdout observations
 # Measure the local RMSE
 rmse = sqrt(mean_squared_error(validation_test['fare_amount'], validation_test['pred']))
 print('Validation RMSE for Baseline I model: {:.3f}'.format(rmse))
-
+'''RMSE is 9.986'''
 
 #Baseline based on the date
 # Get pickup hour from the pickup_datetime column
 train['hour'] = train['pickup_datetime'].dt.hour
 test['hour'] = test['pickup_datetime'].dt.hour
-
-
 hour_groups = train.groupby('hour')['fare_amount'].mean()# Calculate average fare_amount grouped by pickup hour 
 test['fare_amount'] = test.hour.map(hour_groups)# Make predictions on the test set
-
-# Write predictions
-test[['id','fare_amount']].to_csv('hour_mean_sub.csv', index=False)
+test[['id','fare_amount']].to_csv('hour_mean_sub.csv', index=False)# Write predictions
 '''
     baseline achieves 1409th place on the Public Leaderboard which is slightly better than grouping by the number of passengers. 
 '''
-
 
 #Baseline based on the gradient boosting
 from sklearn.ensemble import RandomForestRegressor
@@ -373,13 +355,17 @@ rf.fit(train[features], train.fare_amount)
 test['fare_amount'] = rf.predict(test[features])# Make predictions on the test data
 test[['id','fare_amount']].to_csv('rf_sub.csv', index=False)# Write predictions
 '''
-    final baseline achieves the 1051st place on the Public Leaderboard which is slightly better than the Gradient Boosting from the video. So, now you know how to build fast and simple baseline models to validate your initial pipeline.
+    final baseline achieves the 1051st place on the Public Leaderboard which is slightly better than the Gradient Boosting from the video. 
+    So, now you know how to build fast and simple baseline models to validate your initial pipeline.
 '''
 ################################################
 #Hyperparameter tuning
 #goal: find the best max_depth hyperparameter value for this Gradient Boosting model
 #Using K-fold cross-validation to measure the local performance of the model for each hyperparameter value
 #overall validation RMSE score over 3-fold cross-validation
+    #Grid search. Choose the predened grid of hyperparameter values
+    #Random search. Choose the search space of hyperparameter values
+    #Bayesian optimization. Choose the search space of hyperparameter values
 ################################################
 #Grid search
 max_depth_grid = [3, 6, 9, 12 , 15]
@@ -415,8 +401,10 @@ Better than one-D grid search
     #using multiple models, not one
     #To predict the model based on the multiple models
         #1)model blending: averaging of model A and B prediction
-            #Regresison: arithmetic mean
-            #classification: geometric mean
+            #Train two different models: A and B
+            #Make predictions on the test data
+                #Regresison: arithmetic mean
+                #classification: geometric mean
         #2)model stacking
             '''1. split train into two parts
                 2. train multiple models on Part 1
@@ -426,4 +414,77 @@ Better than one-D grid search
                 6. make predictions on the test data using the 2nd level model '''
             #ex) train data: target is known
 ################################################
+#model blending (Gradient Boosting + Random Forest)
+################################################
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+gb = GradientBoostingRegressor().fit(train[features], train.fare_amount)# Train a Gradient Boosting model
+rf = RandomForestRegressor().fit(train[features], train.fare_amount)# Train a Random Forest model
+test['gb_pred'] = gb.predict(test[features])# Make predictions on the test data
+test['rf_pred'] = rf.predict(test[features])
+# Find mean of model predictions
+test['blend'] = (test['gb_pred'] + test['rf_pred']) / 2
+print(test[['gb_pred', 'rf_pred', 'blend']].head(3))
 
+################################################
+#Model stacking 
+################################################
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+#1) Split train data into two parts
+part_1, part_2 = train_test_split(train, test_size=0.5, random_state=123)
+#2) Train a Gradient Boosting model on Part 1
+gb = GradientBoostingRegressor().fit(part_1[features], part_1.fare_amount)
+#2) Train a Random Forest model on Part 1
+rf = RandomForestRegressor().fit(part_1[features], part_1.fare_amount)
+#3) Make predictions on the Part 2 data
+part_2['gb_pred'] = gb.predict(part_2[features])
+part_2['rf_pred'] = rf.predict(part_2[features])
+#4) Make predictions on the test data
+test['gb_pred'] = gb.predict(part_2[features])
+test['rf_pred'] = rf.predict(part_2[features])
+#5) Train 2nd level model on the Part 2 data
+from sklearn.linear_model import LinearRegression
+lr = LinearRegression(fit_intercept=False)# Create linear regression model without the intercept
+lr.fit(part_2[['gb_pred', 'rf_pred']], part_2.fare_amount)
+#6) Make stacking predictions on the test data
+test['stacking'] = lr.predict(test[['gb_pred', 'rf_pred']])
+#7) Look at the model coefficients
+print(lr.coef_)
+'''
+    result = [0.725, 0.276]
+    usually 2nd level model is simple model like linear or logistic regression.
+    2nd level model has more trust to the Gradient Boositng since 0.7 versus 0.3 for Random Forrest model.
+'''
+################################################
+#Testing Kaggle forum ideas
+################################################
+# Delete passenger_count column
+new_train_1 = train.drop('passenger_count', axis=1)
+# Compare validation scores
+initial_score = get_cv_score(train)
+new_score = get_cv_score(new_train_1)
+print('Initial score is {} and the new score is {}'.format(initial_score, new_score))
+'''initial score is 6.505 and the new score is 6.419.
+    drop "passenger_count" feature helped.
+'''
+
+# Create copy of the initial train DataFrame
+new_train_2 = train.copy()
+# create variable
+new_train_2['weird_feature'] = new_train_2.pickup_latitude + new_train_2.distance_km
+# Compare validation scores
+initial_score = get_cv_score(train)
+new_score = get_cv_score(new_train_2)
+print('Initial score is {} and the new score is {}'.format(initial_score, new_score))
+'''initial score is 6.505 and the new score is 6.5121.
+    "weird_feature" feature did not help.
+'''
+################################################
+#Machine Learning Model Building
+    #1)talk to business. define the problem
+    #2)Coleect the data
+    #3)select the metric
+    #4)make train/test split
+    #5)create the model
+    #6)move the model to production
+################################################
