@@ -197,7 +197,7 @@ for learn_rate in learn_rate_list:
             
 # Print results
 print(results_list)    
-################################################
+################################################################################################
 #Grid Search using Scikit Learn
     '''
     1) choose algorithm to tune
@@ -215,7 +215,7 @@ print(results_list)
     #n_jobs: allow multiple models to be created at the same time
     #return_train_score: useful for analyzing bias-variane tradeoff, but computation expense
         #will not assist in choosing best model, just for analysis
-################################################
+################################################################################################
 # Model #1:
  GridSearchCV(cv=5, error_score='raise-deprecating',
        estimator=RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini',
@@ -301,12 +301,12 @@ print("Confustion Matrix \n", confusion_matrix(y_test, predictions))
 # Get the ROC-AUC score
 predictions_proba = grid_rf_class.best_estimator_.predict_proba(X_test)[:,1]
 print("ROC-AUC Score \n", roc_auc_score(y_test, predictions_proba))
-################################################
+################################################################################################
 #Random Search
     #define an estimator
     #set a cross-validation and scoring function
     #randomly select grid
-################################################
+################################################################################################
 #Randomly Sample Hyperparameters
 # Create a list of values for the learning_rate hyperparameter
 learn_rate_list = np.linspace(0.01,1.5,200)
@@ -411,7 +411,7 @@ random_combinations_chosen = [combinations_list[index] for index in random_index
 visualize_search(grid_combinations_chosen, random_combinations_chosen)
 ''' grid search will cover a small area completely whilst random search will cover a much larger area but not completely.''''
 
-################################################
+################################################################################################
 #Informed Search vs Uninformed Search
     #Uninformed search: iternation of hyperparameter tuning does not learn from previous iterations
     #=parallelized our work
@@ -423,7 +423,7 @@ visualize_search(grid_combinations_chosen, random_combinations_chosen)
         4) continue until optimal score is obtained'''
         #utilize advan of grid and random
         #efficient computation
-################################################
+################################################################################################
 # Confirm the size of the combinations_list
 print(len(combinations_list))
 
@@ -451,3 +451,111 @@ learn_rate_list = np.linspace(0.001,1,50)
 # Call the function to visualize the second results
 visualize_second()
 ''' appears to be a bump around max_depths between 5 and 10 as well as learn_rate less than 0.2 so perhaps there is even more room for improvement!'''
+################################################
+#uninformed method
+	#1) Grid Search
+	#2) Random Search
+#Informed method
+	#1) Coarse to Fine
+	#2) Bayesian Hyperparameter tuning
+	#3) Genetic algorithm
+################################################
+
+################################################
+#Course to Fine
+	‘’’1)Randome Search
+	2)find promising areas
+	3) Grid search in the smaller area
+4)continue until optimal score obtained’’’
+################################################
+## Visualizing Coarse to Fine
+# Confirm the size of the combinations_list
+print(len(combinations_list))
+
+# Sort the results_df by accuracy and print the top 10 rows
+print(results_df.sort_values(by='accuracy', ascending=False).head(10))
+
+# Confirm which hyperparameters were used in this search
+print(results_df.columns)
+
+# Call visualize_hyperparameter() with each hyperparameter in turn
+visualize_hyperparameter('max_depth')
+visualize_hyperparameter('min_samples_leaf')
+visualize_hyperparameter('learn_rate')
+#################################
+#Bayesian Method
+	#Bayes Rule: iteratively update our belief about our outcome in order to get a more accurate result.
+	#P(A|B) = posterior probability
+	#P(B|A)P(A) / P(B) =prior probability, already known fact
+		#P(A|B) = probability that a predisposed person has a disease
+		#P(A) = probability of person has a disease (outcome we already know)
+		#P(B) = probability of person has pre-disposed (genetically) (outcome we want to know)
+		#P(B|A) = probability that a person with the disease are pre-disposed
+################################################
+p_unhappy = 0.15# Assign probabilities to variables 
+p_unhappy_close = 0.35
+p_close = 0.07# Probabiliy someone will close
+
+# Probability unhappy person will close
+p_close_unhappy = (p_unhappy_close * p_close) / p_unhappy
+print(p_close_unhappy)
+‘’’ There's a 16.3% chance that a customer, given that they are unhappy, will close their account.
+‘’’
+################################################
+# Bayesian Hyperparameter tuning with Hyperopt
+	#1. Set the Domain: Our Grid (with a bit of a twist)
+#2. Set the Optimization algorithm (use default TPE)
+#3. Objective function to minimize: we will use 1-Accuracy
+################################################
+# Set up grid with specified hyperparameters
+space = {'max_depth': hp.quniform('max_depth', 2, 10, 2),'learning_rate': hp.uniform('learning_rate', 0.001,0.9)}
+
+# Set up objective function
+def objective(params):
+    params = {'max_depth': int(params['max_depth']),'learning_rate': params['learning_rate']}
+    gbm_clf = GradientBoostingClassifier(n_estimators=100, **params) 
+    best_score = cross_val_score(gbm_clf, X_train, y_train, scoring='accuracy', cv=2, n_jobs=4).mean()
+    loss = 1 - best_score
+    return loss
+
+# Run the algorithm
+best = fmin(fn=objective,space=space, max_evals=20, rstate=np.random.RandomState(42), algo=tpe.suggest)
+print(best) #algorithm 20 evaluations
+################################################
+#Informed search: genetic algorithm
+	#create model
+	#pick the best model by scoring function
+	#create new models that are similar to the best ones
+	#add some randomness to avoid the local optimal
+#allow us to learn from previous iteration like bayesian
+#TPOT: automated python machine learning tool that optimizes machine learning pipelines using genetic programming
+	#Generations: iteration number
+	#Population_size: number of models to keep after each iteration
+	$offspring_size: number of models to produce in each iteration
+	#mutation_ratel: proportion of pipelines to apply randomness 
+	#crossover_rate: proportion of pipelines to breed each iteration
+	#scoring: function to determine the best model
+	#cv: cross-validation strategy to use
+################################################
+## Genetic Hyperparameter Tuning with TPOT
+# Assign the values outlined to the inputs
+number_generations = 3
+population_size = 4
+offspring_size = 3
+scoring_function = 'accuracy'
+
+# Create the tpot classifier
+tpot_clf = TPOTClassifier(generations=number_generations, population_size=population_size,
+                          offspring_size=offspring_size, scoring=scoring_function,
+                          verbosity=2, random_state=2, cv=2)
+
+# Fit the classifier to the training data
+tpot_clf.fit(X_train, y_train)
+
+# Score on the test set
+print(tpot_clf.score(X_test, y_test))
+
+
+## Analysing TPOT's stability
+‘’’try to run with different number of random_state (42,122,99). 
+First time, chose Decision Tree as a Best pipeline, Second time chose KNeighborsClassifier and Third time was RandomForestClassifier. If we have low generations, population size and offspring, TPOT is not stable’’’
