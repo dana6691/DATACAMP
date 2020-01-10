@@ -45,13 +45,13 @@ X_train, X_test, y_train, y_test = train_test_split(volunteer_X, volunteer_y, st
 
 # Print out the category_desc counts on the training y labels
 print(y_train["category_desc"].value_counts())
-################################################
+################################################################################################
 #Standardized data
 	#use for linear space, linearity assumption
 	#features with high variance
 	#continuous variable
 	#1)log normalization
-################################################
+################################################################################################
 ## Log-normalization
 #check variance 
 Print(wine.var())
@@ -108,10 +108,10 @@ knn.fit(X_train,y_train)
 # Score the model on the test data
 print(knn.score(X_test,y_test))
 
-################################################
+################################################################################################
 #Feature engineering
 	#categorical variable: encoding
-################################################
+################################################################################################
 ## Encoding categorical variables - binary
 enc = LabelEncoder() # Set up the LabelEncoder object
 hiking["Accessible_enc"] = enc.fit_transform(hiking["Accessible"]) # Apply the encoding to the "Accessible" column
@@ -167,13 +167,13 @@ X_train, X_test, y_train, y_test = train_test_split(text_tfidf.toarray(), y, str
 nb.fit(X_train, y_train) #fit
 print(nb.score(X_test, y_test)) # Print out the model's accuracy
 
-################################################
+################################################################################################
 #Feature Selection
 		#Removing redundant features
  			#remove noisy features
 			#correlated features
 			#duplicated features
-################################################
+################################################################################################
 # Create a list of redundant column names to drop
 to_drop = ["category_desc", "created_date", "locality", "region", "vol_requests"]
 
