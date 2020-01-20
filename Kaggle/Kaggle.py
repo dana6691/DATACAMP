@@ -31,7 +31,7 @@ test['sales'] = rf.predict(test[['store', 'item']])# Get predictions for the tes
 test[['id', 'sales']].to_csv('kaggle_submission.csv', index=False)# Write test predictions using the sample_submission format
 ################################################
 #Competition metric
-    ''' 1)AUC(area under the ROC): classification
+''' 1)AUC(area under the ROC): classification
         2)F1 Score(F1) : classification
         3)Mean Log Loss(LogLoss) : classification
         4)Mean Absolute Error(MAE): Regression
@@ -182,7 +182,7 @@ mse_scores = get_fold_mse(train, kf)# Get MSE scores for each cross-validation s
 print('Mean validation MSE: {:.5f}'.format(np.mean(mse_scores)))
 print('MSE by fold: {}'.format(mse_scores))
 print('Overall validation MSE: {:.5f}'.format(np.mean(mse_scores) + np.std(mse_scores)))
-    '''
+'''
     print('Mean validation MSE: {:.5f}'.format(np.mean(mse_scores)))
     print('MSE by fold: {}'.format(mse_scores))
     print('Overall validation MSE: {:.5f}'.format(np.mean(mse_scores) + np.std(mse_scores)))
@@ -406,7 +406,7 @@ Better than one-D grid search
                 #Regresison: arithmetic mean
                 #classification: geometric mean
         #2)model stacking
-            '''1. split train into two parts
+'''1. split train into two parts
                 2. train multiple models on Part 1
                 3. make prediction on part 2
                 4. make prediction on the test data
