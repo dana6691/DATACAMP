@@ -372,7 +372,6 @@ print(fractions_change.tail())
 
 ##Building hosts DataFrame
 import pandas as pd
-
 # Left join editions and ioc_codes: hosts
 hosts = pd.merge(editions,ioc_codes,how='left')
 
@@ -400,27 +399,21 @@ print(reshaped.shape, fractions_change.shape)
 chn = reshaped.loc[reshaped.NOC == 'CHN']
 print(chn.tail())
 
-##Merging to compute influence
-import pandas as pd
 
+import pandas as pd
 # Merge reshaped and hosts: merged
 merged = pd.merge(reshaped , hosts,how='inner')
 print(merged.head())
-
 # Set Index of merged and sort it: influence
 influence = merged.set_index('Edition').sort_index()
 print(influence.head())
 
 ##Plotting influence of host country
-# Import pyplot
 import matplotlib.pyplot as plt
-
 # Extract influence['Change']: change
 change = influence['Change']
-
 # Make bar plot of change: ax
 ax = change.plot(kind='bar')
-
 # Customize the plot to improve readability
 ax.set_ylabel("% Change of Host Country Medal Count")
 ax.set_title("Is there a Host Country Advantage?")

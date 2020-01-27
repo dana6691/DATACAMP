@@ -442,9 +442,67 @@ for link in a_tags:
 
 ################################################################################################
 #Introduction to APIs and JSONs
+    #APIs(Application Programming Interfaces) : a set of protocols that building and interacting with software application
+        # code that allows two software programs to communicate to each other
+        # Ex) extract twitter data, using Twitter API, connecting Twitter and python 
+        # Ex) Wikipedia API: allow automated pulling processing information to python
+    #JSONs(JavaScript Object Notations): standard formation of transferring API data
+        #real-time server to browser communication
+        #human readable
+        #datatype = dictionary = {'key':'value'}
 ################################################################################################
+# Import json file
+with open("a_movie.json") as json_file:
+    json_data = json.load(json_file)
+
+# Print all key-value pair in json_data
+for key, value in json_data.items():
+    print(key + ':', value)
+
+# Print selective Keys Only
+for key, value in json_data.items():
+    if key in ('Title','Year'):
+        print(key + ':', value)
+################################################
+#APIs and interacting with the world wide web
+################################################
+## Connecting to an API in Python
+import requests
+url = 'http://www.omdbapi.com/?apikey=72bc447a&t=the+social+network'
+# send the request and catch the response: r
+r = requests.get(url)
+# Print the text of the response
+print(r.text)
+
+## JSON–from the web to Python
+import requests
+url = 'http://www.omdbapi.com/?apikey=72bc447a&t=social+network'
+r = requests.get(url)
+# Decode the JSON data into a dictionary: json_data
+json_data = r.json()
+# Print each key-value pair in json_data
+for k in json_data.keys():
+    print(k + ': ', json_data[k])
+
+## Checking out the Wikipedia API
+import requests
+url = "https://en.wikipedia.org/w/api.php?action=query&prop=extracts&format=json&exintro=&titles=pizza"
+r = requests.get(url)
+json_data = r.json()
+
+# Print the Wikipedia page extract
+pizza_extract = json_data['query']['pages']['24768']['extract']
+print(pizza_extract)
+################################################
+# The Twitter API and Authentication
+    '''1)https://developer.twitter.com/en/docs
+        2) Apps (right top corner)
+        3) access 
+    '''
+################################################
+#%%
+import tweepy, json
 
 
-################################################
-#
-################################################
+
+# %%
